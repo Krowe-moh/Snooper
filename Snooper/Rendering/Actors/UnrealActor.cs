@@ -55,6 +55,7 @@ public abstract class UnrealActor(UObject actor) : Actor(actor)
                         UBoxComponent box => new BoxComponent(box),
                         USphereComponent sphere => new SphereComponent(sphere),
                         UCapsuleComponent capsule => new CapsuleComponent(capsule),
+                        UCylinderComponent cylinder => new CylinderComponent(cylinder),
                         _ => new SpatialComponent(shape)
                     },
                     ULightComponentBase light => light switch
