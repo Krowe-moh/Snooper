@@ -102,7 +102,9 @@ public static class TextureExtensions
         {
             EPixelFormat.PF_B8G8R8A8 or
             EPixelFormat.PF_R8G8B8A8 or
+            EPixelFormat.PF_A8R8G8B8 or
             EPixelFormat.PF_G8 or
+            EPixelFormat.PF_V8U8 or
             EPixelFormat.PF_A32B32G32R32F or
             EPixelFormat.PF_FloatRGB or
             EPixelFormat.PF_FloatRGBA or
@@ -138,6 +140,17 @@ public static class TextureExtensions
                 PixelFormat.Rgba,
                 PixelType.UnsignedByte
             ),
+            EPixelFormat.PF_A8R8G8B8 when srgb => (
+                SizedInternalFormat.Srgb8Alpha8,
+                PixelFormat.Bgra,
+                PixelType.UnsignedByte
+            ),
+            EPixelFormat.PF_A8R8G8B8 => (
+                SizedInternalFormat.Rgba8,
+                PixelFormat.Bgra,
+                PixelType.UnsignedByte
+            ),
+
             EPixelFormat.PF_R8G8B8A8 => (
                 SizedInternalFormat.Rgba8,
                 PixelFormat.Rgba,
@@ -202,6 +215,12 @@ public static class TextureExtensions
                 SizedInternalFormat.Rgb32f,
                 PixelFormat.Rgb,
                 PixelType.Float
+            ),
+
+            EPixelFormat.PF_V8U8 => (
+                SizedInternalFormat.Rg8Snorm,
+                PixelFormat.Rg,
+                PixelType.Byte
             ),
             _ => throw new NotImplementedException($"Unsupported pixel format: {format}")
         };
