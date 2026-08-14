@@ -1,5 +1,7 @@
 ﻿using System.Numerics;
+using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Objects.UObject;
 using ImGuiNET;
 using Snooper.Core;
@@ -45,7 +47,40 @@ public class SpatialComponent : ActorComponent
 
     public SpatialComponent(USceneComponent component) : base(component)
     {
-        LocalTransform = component.GetRelativeTransform();
+        var transform = component.GetRelativeTransform();
+
+          if (component.GetAttachParent() is null &&
+            component.Outer?.Load<UObject>() is { } outer)
+        {
+            var location = outer.GetOrDefault(
+                "RelativeLocation",
+                outer.GetOrDefault("Translation", outer.GetOrDefault("Location", FVector.ZeroVector)));
+
+            var rotation = outer.GetOrDefault(
+                "RelativeRotation",
+                outer.GetOrDefault("Rotation", FRotator.ZeroRotator));
+
+            var scale = outer.GetOrDefault(
+                "RelativeScale3D",
+                outer.GetOrDefault(
+                    "Scale3D",
+                    outer.GetOrDefault("DrawScale3D", FVector.OneVector) *
+                    outer.GetOrDefault("DrawScale", 1.0f)));
+
+            var prePivot = outer.GetOrDefault("PrePivot", FVector.ZeroVector);
+            var scaledPivot = scale * prePivot;
+            var rotatedPivot = rotation.RotateVector(scaledPivot);
+            var translation = location - rotatedPivot;
+
+            var actorTransform = new FTransform(
+                rotation,
+                translation,
+                scale);
+
+            transform = actorTransform * transform;
+        }
+
+        LocalTransform = transform;
         AttachSocketName = component.GetOrDefault<FName?>("AttachSocketName")?.Text;
 
         _absPosition = component.GetOrDefault<bool>("bAbsoluteLocation");
