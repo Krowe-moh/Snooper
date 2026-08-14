@@ -66,12 +66,12 @@ public class WorldActor : Actor
         parents.Clear();
 
         // Parallel.ForEach(world.StreamingLevels, new ParallelOptions { MaxDegreeOfParallelism = 10 }, Process);
-        for (var i = 0; i < world.StreamingLevels.Length; i++)
+        /*for (var i = 0; i < world.StreamingLevels.Length; i++)
         {
             // TODO: these fucking streaming levels can reference each other
             Process(world.StreamingLevels[i]);
             // if (i > 5) break; // TODO: GTA optimize, actually stream it (see world partition) or limit the amount of streaming levels to process
-        }
+        }*/
 
         GC.Collect();
     }
