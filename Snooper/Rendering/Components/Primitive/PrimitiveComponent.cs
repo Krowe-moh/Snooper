@@ -99,6 +99,10 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         {
             IsVisible = !hidden;
         }
+        else if (component.TryGetValue(out bool hiddenGame, "HiddenGame"))
+        {
+            IsVisible = !hiddenGame;
+        }
 
         if (component.TryGetValue(out bool castShadow, "CastShadow", "bCastStaticShadow", "bCastDynamicShadow"))
         {

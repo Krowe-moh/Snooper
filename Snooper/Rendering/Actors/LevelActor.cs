@@ -1,6 +1,7 @@
 ﻿using CUE4Parse.GameTypes.FN.Assets.Exports.DataAssets;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Actor;
+using CUE4Parse.UE4.Assets.Exports.WorldPartition;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Objects.UObject;
 using Snooper.Rendering.Components.Mesh;
@@ -15,10 +16,27 @@ public class LevelActor : UnrealActor
     public LevelActor(UObject actor, Dictionary<FPackageIndex, SpatialComponent> components) : base(actor)
     {
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("RootComponent"));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("CollisionComponent"));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("StaticMeshComponent"));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("BrushComponent"));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("Components", []));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("LightComponents", []));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("StaticMeshComponents", []));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("InstanceComponents", []));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("BlueprintCreatedComponents", []));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("LandscapeComponents", []));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("SplineComponent"));
+
+        if (actor is AWorldInfo worldInfo)
+        {
+            if (worldInfo?.StreamingLevels?.Length > 0)
+            {
+                for (var i = 0; i < worldInfo.StreamingLevels.Length; i++)
+                {
+                    Process(worldInfo.StreamingLevels[i]);
+                }
+            }
+        }
 
         if (actor is AInstancedFoliageActor { FoliageInfos: { } foliages })
         {
@@ -59,6 +77,18 @@ public class LevelActor : UnrealActor
         }
     }
 
+    private void Process(FPackageIndex? ptr)
+    {
+        switch (ptr?.Load())
+        {
+            case ULevelStreaming loaded:
+            {
+                Children.Add(new WorldActor(ptr.Owner.Provider.LoadPackageObject<UWorld>(loaded.PackageName + ".TheWorld")));
+                break;
+            }
+        }
+    }
+    
     public FPackageIndex? ProcessEnqueuedComponents(Dictionary<FPackageIndex, SpatialComponent> components)
     {
         foreach (var ptr in _ptrs)
