@@ -1,5 +1,6 @@
 ﻿using OpenTK.Graphics.OpenGL4;
-using Snooper.Core;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Containers.Programs;
 using Snooper.Rendering.Components;
@@ -30,8 +31,20 @@ public class SkyboxSystem : PrimitiveSystem<CubeComponent>
 
         switch (_component)
         {
+            case CubemapComponent cubemap:
+            {
+                if (!cubemap.IsLoaded)
+                    LoadCubemap(cubemap);
+
+                shader.SetUniform("uUseCubemap", true);
+                GL.ActiveTexture(TextureUnit.Texture0);
+                GL.BindTexture(TextureTarget.TextureCubeMap, cubemap.TextureHandle);
+                shader.SetUniform("uCubemap", 0);
+                break;
+            }
             case AtmosphericComponent atmospheric:
             {
+                shader.SetUniform("uUseCubemap", false);
                 shader.SetUniform("uSunPos", atmospheric.Sun.Position);
                 shader.SetUniform("uSunIntensity", atmospheric.Sun.Intensity);
                 shader.SetUniform("uSunRadius", atmospheric.Sun.Radius);
@@ -51,6 +64,32 @@ public class SkyboxSystem : PrimitiveSystem<CubeComponent>
         shader.Unuse();
     }
 
+    private static void LoadCubemap(CubemapComponent cubemap)
+    {
+        if (cubemap.TextureHandle == -1)
+            cubemap.TextureHandle = GL.GenTexture();
+
+        GL.BindTexture(TextureTarget.TextureCubeMap, cubemap.TextureHandle);
+
+        for (var i = 0; i < cubemap.Faces.Length; i++)
+        {
+            using var image = Image.Load<Rgba32>(cubemap.Faces[i]);
+            var pixels = new byte[4 * image.Width * image.Height];
+            image.CopyPixelDataTo(pixels);
+
+            GL.TexImage2D(TextureTarget.TextureCubeMapPositiveX + i, 0, PixelInternalFormat.Rgba,
+                image.Width, image.Height, 0, OpenTK.Graphics.OpenGL4.PixelFormat.Rgba, PixelType.UnsignedByte, pixels);
+        }
+
+        GL.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
+        GL.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+        GL.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
+        GL.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
+        GL.TexParameter(TextureTarget.TextureCubeMap, TextureParameterName.TextureWrapR, (int)TextureWrapMode.ClampToEdge);
+
+        cubemap.IsLoaded = true;
+    }
+
     protected override void OnActorComponentEnqueued(CubeComponent component)
     {
         base.OnActorComponentEnqueued(component);
@@ -59,16 +98,6 @@ public class SkyboxSystem : PrimitiveSystem<CubeComponent>
             throw new InvalidOperationException("Only one SkyboxComponent can be added to the system at a time.");
 
         _component = component;
-    }
-
-    protected override void OnActorComponentRemoved(CubeComponent component, EEndPlayReason reason)
-    {
-        base.OnActorComponentRemoved(component, reason);
-
-        if (_component == component)
-        {
-            _component = null;
-        }
     }
 
     private CubeComponent? _component;

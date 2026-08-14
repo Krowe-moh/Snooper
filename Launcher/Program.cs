@@ -131,7 +131,7 @@ provider.SubmitKey(new FGuid(), new FAesKey(key));
 provider.PostMount();
 provider.LoadVirtualPaths();
 
-var snooper = new EditorWindow(144, 1500, 900, provider, false);
+var snooper = new EditorWindow(60, 1500, 900, provider, false);
 var scene = new Actor("Example Scene");
 scene.Components.Add(new BoxComponent(Vector3.Zero, Vector3.One));
 
@@ -143,6 +143,9 @@ scene.Children.Add(camera);
 var grid = new Actor("Grid");
 grid.Components.Add(new GridComponent());
 scene.Children.Add(grid);
+var cubemap = new Actor("Skybox");
+cubemap.Components.Add(new CubemapComponent());
+scene.Children.Add(cubemap);
 
 var sun = new Actor("Sun Light");
 sun.Components.Add(new DirectionalLightComponent(MathF.PI, new Vector3(1.0f, 0.87f, 0.72f), new Transform(new Quaternion(new Vector3(0.5f, -0.5f, 0.0f), 1.0f)), "Directional Light"));
