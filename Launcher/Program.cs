@@ -35,9 +35,9 @@ Log.Logger = new LoggerConfiguration()
 OodleHelper.Initialize();
 ZlibHelper.Initialize(ZlibHelper.DLL_NAME);
 
-const string dir = @"C:\Program Files\Epic Games\rocketleague\TAGame\CookedPCConsole";
+const string dir = @"C:\Program Files (x86)\Steam\steamapps\common\Moon Base Alpha";
 const string mapping = @"C:\Users\krowe\Downloads\RocketLeague.usmap";
-var version = new VersionContainer(EGame.GAME_RocketLeague);
+var version = new VersionContainer(EGame.GAME_UE3_0);
 
 var provider = new DefaultFileProvider(dir, SearchOption.AllDirectories, version, StringComparer.OrdinalIgnoreCase);
 if (!string.IsNullOrEmpty(mapping))
@@ -48,6 +48,7 @@ provider.LoadVirtualPaths();
 
 var snooper = new EditorWindow(60, 1500, 900, provider, false);
 var scene = new Actor("Example Scene");
+scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Moon Base Alpha/MoonBaseAlphaGame/CookedPC/Maps/MBA_Sandbox.TheWorld")));
 scene.Components.Add(new BoxComponent(Vector3.Zero, Vector3.One));
 
 var camera = new CameraActor("Camera");
@@ -66,8 +67,6 @@ scene.Children.Add(cubemap);
 var sun = new Actor("Sun Light");
 sun.Components.Add(new DirectionalLightComponent(MathF.PI, new Vector3(1.0f, 0.87f, 0.72f), new Transform(new Quaternion(new Vector3(0.5f, -0.5f, 0.0f), 1.0f)), "Directional Light"));
 scene.Children.Add(sun);
-
-scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("CookedPCConsole/Labs_Basin_P.TheWorld")));
 
 snooper.Manager.LoadScene(scene);
 snooper.Run();

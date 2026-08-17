@@ -32,7 +32,7 @@ public class Texture2D(int width, int height,
 
         var mipIndex = _owner.GetMipIndexByMaxSize(Settings.MaxTextureMipSize);
         if (mipIndex < 0)
-            throw new InvalidOperationException("No suitable mip found for the given max texture size.");
+            return; //throw new InvalidOperationException("No suitable mip found for the given max texture size.");
 
         byte[]? mipData;
         int width, height;

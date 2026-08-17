@@ -18,7 +18,14 @@ public class CylinderComponent : ShapeComponent
             radius = collisionRadius * Settings.GlobalScale;
         }
 
-        const float height = 1.0f;
+        const float defaultHeight = 1.0f;
+
+        var height = defaultHeight;
+        if (component.TryGetValue(out float collisionHeight, "CollisionHeight"))
+        {
+            height = collisionHeight * Settings.GlobalScale;
+        }
+
         var bounds = new CullingBounds(Vector3.Zero, new Vector3(radius, height / 2.0f, radius));
         Descriptor = new PrimitiveDescriptor<Vector3>(bounds, () => new Geometry(radius, height / 2.0f));
 

@@ -44,7 +44,7 @@ public abstract class UnrealActor(UObject actor) : Actor(actor)
                     },
                     USkeletalMeshComponent sk when sk.TryGetValue<USkeletalMesh>(out var mesh, "SkeletalMesh", "SkinnedAsset") => new SkeletalMeshComponent(mesh, sk),
                     UGeometryCollectionComponent gc => new GeometryCollectionComponent(gc),
-                    ULandscapeComponent landscape => new LandscapeMeshComponent(landscape),
+                    //ULandscapeComponent landscape => new LandscapeMeshComponent(landscape),
                     ULandscapeSplinesComponent splines => new LandscapeSplinesComponent(splines),
                     UDecalComponent decal => new DecalComponent(decal),
                     UBillboardComponent billboard => new BillboardComponent(billboard),

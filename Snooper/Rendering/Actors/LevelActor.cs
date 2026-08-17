@@ -15,9 +15,21 @@ public class LevelActor : UnrealActor
 
     public LevelActor(UObject actor, Dictionary<FPackageIndex, SpatialComponent> components) : base(actor)
     {
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("m_staticMesh"));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("BaseSkelComponent"));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("TankSkeleton"));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("Mesh"));
+
+
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("LightEnvironment"));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("RootComponent"));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("CollisionComponent"));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("LightComponent"));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("Base"));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("DrawFrustum"));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("MeshComp"));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("StaticMeshComponent"));
+        EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("CylinderComponent"));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?>("BrushComponent"));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("Components", []));
         EnqueuePointers(actor.GetOrDefault<FPackageIndex?[]>("LightComponents", []));
