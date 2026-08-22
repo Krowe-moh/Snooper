@@ -91,7 +91,7 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
             material.OnMaterialDataContainerSet += section =>
             {
                 TextureCache.Add(section);
-                component.IsOpaque &= !section.IsTranslucent;
+                // component.IsOpaque &= !section.IsTranslucent;
             };
         }
     }
@@ -116,6 +116,8 @@ public abstract class IndirectRenderSystem<TVertex, TComponent, TInstanceData, T
     public void Render(CameraComponent camera, CommandBufferType type)
     {
         if (!IsEnabled) return;
+
+        using (Scope())
         using (Profiler.Sample(DisplayName))
         {
             if (ShowWireframe) GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);

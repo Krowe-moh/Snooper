@@ -46,7 +46,7 @@ provider.Initialize();
 provider.PostMount();
 provider.LoadVirtualPaths();
 
-var snooper = new EditorWindow(60, 1500, 900, provider, false);
+using var snooper = new EditorWindow(60, 1500, 900, provider, false);
 var scene = new Actor("Example Scene");
 scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Moon Base Alpha/MoonBaseAlphaGame/CookedPC/Maps/MBA_Sandbox.TheWorld")));
 scene.Components.Add(new BoxComponent(Vector3.Zero, Vector3.One));

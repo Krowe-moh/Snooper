@@ -2,6 +2,7 @@
 using CUE4Parse.FileProvider;
 using CUE4Parse_Conversion.Dto;
 using CUE4Parse.UE4.Assets.Exports.Animation;
+using CUE4Parse.UE4.Assets.Exports.GeometryCollection;
 using CUE4Parse.UE4.Assets.Exports.SkeletalMesh;
 using CUE4Parse.UE4.Assets.Exports.StaticMesh;
 using CUE4Parse.UE4.Objects.Core.Math;
@@ -25,7 +26,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
     public LodDescriptor<TVertex>[] Lods { get; }
     public SkeletonDescriptor? Skeleton { get; }
     public ISocketDescriptor?[] Sockets { get; }
-    public List<MorphTargetDescriptor>? MorphTargets { get; }
+    public MorphDescriptor? Morphs { get; }
 
     private PrimitiveDescriptor(PrimitiveDescriptor<TVertex> other)
     {
@@ -37,6 +38,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Lods = [];
         Skeleton = null;
         Sockets = [];
+        Morphs = other.Morphs;
     }
 
     public PrimitiveDescriptor(CullingBounds bounds, Func<TPrimitiveData<TVertex>> factory)
@@ -80,6 +82,27 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         }
     }
 
+    private PrimitiveDescriptor(UGeometryCollection owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
+    {
+        Name = owner.Name;
+        Path = owner.GetCleanPath();
+        Guid = new FGuid((uint)owner.Name.GetHashCode());
+
+        var colorRemap = CreateJunoColorRemap(owner.Owner?.Provider, Path);
+        if (colorRemap != null) ColorMode = FragmentColorMode.VertexColor;
+
+        using var dto = new StaticMeshDto(owner);
+        if (dto.LODs.Count == 0) throw new InvalidOperationException(); // just so we fallback to collection groups
+        Bounds = new CullingBounds(dto.Bounds);
+        Lods = new LodDescriptor<TVertex>[dto.LODs.Count];
+        for (var i = 0; i < Lods.Length; i++)
+        {
+            Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory, colorRemap);
+        }
+
+        Sockets = [];
+    }
+
     private PrimitiveDescriptor(USkeletalMesh owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
     {
         Name = owner.Name;
@@ -113,13 +136,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         if (dto.MorphTargets is { Length: > 0 } morphTargets)
         {
             owner.PopulateMorphTargetVerticesData();
-
-            MorphTargets = new List<MorphTargetDescriptor>(morphTargets.Length);
-            foreach (var ptr in morphTargets)
-            {
-                if (!ptr.TryLoad<UMorphTarget>(out var morphTarget)) continue;
-                MorphTargets.Add(new MorphTargetDescriptor(morphTarget));
-            }
+            Morphs = MorphDescriptor.Create(morphTargets, Lods);
         }
     }
 
@@ -190,6 +207,9 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(UStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(owner.LightingGuid, () => new PrimitiveDescriptor<TVertex>(owner, factory));
+
+    public static PrimitiveDescriptor<TVertex> GetOrCreate(UGeometryCollection owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
+        => MeshCache.GetOrCreate(new FGuid((uint)owner.Name.GetHashCode()), () => new PrimitiveDescriptor<TVertex>(owner, factory));
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeletalMesh owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(FGuid.Random(), () => new PrimitiveDescriptor<TVertex>(owner, factory));

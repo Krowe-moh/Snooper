@@ -14,9 +14,11 @@ using Snooper.Rendering.Systems;
 
 namespace Editor.Widgets;
 
-public class InspectorWidget
+public class InspectorWidget : PanelWidget
 {
-    private const string Title      = "Inspector";
+    public override string PanelTitle => Settings.InspectorWindow;
+    public override PanelGroup Group => PanelGroup.Editor;
+
     private const string WarnIcon   = "\uf071";
     private const string FileIcon   = "\uf1c9";
     private const string SearchIcon = "\uf002";
@@ -25,65 +27,57 @@ public class InspectorWidget
 
     private int    _lastActorId        = -1;
     private int    _lastComponentCount = -1;
+    private uint   _lastRevision;
     private string _search             = "";
     private bool   _dirty              = true;
 
     private readonly List<FlatEntry>  _flatNodes = [];
     private readonly HashSet<int>     _reachable = [];
 
-    public void Draw(Actor? selectedActor, ActorComponent? selectedComponent)
+    protected override void DrawContents(EditorManager editor)
     {
-        if (ImGui.Begin(Title))
+        var selectedComponent = editor.SelectedComponent;
+        var actor = editor.SelectedActor ?? selectedComponent?.Actor;
+        if (actor == null)
         {
-            var actor = selectedActor ?? selectedComponent?.Actor;
-            if (actor == null)
-            {
-                ImGui.TextUnformatted("No actor selected.");
-                ImGui.End();
-                return;
-            }
-
-            var actorId = actor.Id;
-            var componentCount = actor.Components.Count;
-            if (actorId != _lastActorId || componentCount != _lastComponentCount)
-            {
-                _lastActorId = actorId;
-                _lastComponentCount = componentCount;
-                _dirty = true;
-            }
-
-            DrawSearchBar();
-
-            ImGui.SeparatorText($"{actor.Name} ({actor.Class ?? "N/A"} - {componentCount} Component{(componentCount != 1 ? "s" : "")})");
-            DrawClippedTree(actor);
-
-            (selectedComponent ?? actor.RootComponent)?.DrawControls();
-
-            ImGui.SeparatorText("");
-            ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.Header));
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ImGui.GetColorU32(ImGuiCol.HeaderHovered));
-            ImGui.PushStyleColor(ImGuiCol.ButtonActive, ImGui.GetColorU32(ImGuiCol.ButtonActive));
-            var width = ImGui.GetContentRegionAvail().X;
-            if (ImGui.Button($"{Settings.AddIcon}  Add Component", new Vector2(width, 0)))
-            {
-
-            }
-            ImGui.PopStyleColor(3);
+            ImGui.TextUnformatted("No actor selected.");
+            return;
         }
-        ImGui.End();
+
+        var actorId = actor.Id;
+        var componentCount = actor.Components.Count;
+        var revision = actor.Revision;
+        if (actorId != _lastActorId || componentCount != _lastComponentCount || revision != _lastRevision)
+        {
+            _lastActorId = actorId;
+            _lastComponentCount = componentCount;
+            _lastRevision = revision;
+            _dirty = true;
+        }
+
+        DrawSearchBar();
+
+        ImGui.SeparatorText($"{actor.Name} ({actor.Class ?? "N/A"} - {componentCount} Component{(componentCount != 1 ? "s" : "")})");
+        DrawClippedTree(actor);
+
+        (selectedComponent ?? actor.RootComponent)?.DrawControls();
+
+        ImGui.SeparatorText("");
+        ImGui.PushStyleColor(ImGuiCol.Button, ImGui.GetColorU32(ImGuiCol.Header));
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ImGui.GetColorU32(ImGuiCol.HeaderHovered));
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, ImGui.GetColorU32(ImGuiCol.ButtonActive));
+        var width = ImGui.GetContentRegionAvail().X;
+        if (ImGui.Button($"{Settings.AddIcon}  Add Component", new Vector2(width, 0)))
+        {
+
+        }
+        ImGui.PopStyleColor(3);
     }
 
     private void DrawSearchBar()
     {
-        var style = ImGui.GetStyle();
-        var iconWidth = ImGui.CalcTextSize(SearchIcon).X;
-        var inputW = ImGui.GetContentRegionAvail().X - iconWidth - style.ItemSpacing.X;
-
-        ImGui.AlignTextToFramePadding();
-        ImGui.TextDisabled(SearchIcon);
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(inputW);
-        if (ImGui.InputTextWithHint("##ComponentSearch", "Search...", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll))
+        ImGui.SetNextItemWidth(-1);
+        if (ImGui.InputTextWithHint("##ComponentFilter", $"{Settings.MagnifyingGlassIcon}  Filter Components", ref _search, 128, ImGuiInputTextFlags.AutoSelectAll))
         {
             _dirty = true;
         }
@@ -177,6 +171,9 @@ public class InspectorWidget
 
         var toggledOpen = ImGui.IsItemToggledOpen();
 
+        AttachmentDragDrop.Source(component);
+        if (AttachmentDragDrop.ComponentTarget(component)) _dirty = true;
+
         if (ImGui.BeginPopupContextItem("##ComponentContext"))
         {
             ImGui.TextDisabled(component.Name);
@@ -269,8 +266,6 @@ public class InspectorWidget
             }
         }
 
-        // TODO: drag and drop
-
         if (ImGui.IsItemClicked(ImGuiMouseButton.Left) && !toggledOpen)
         {
             if (component.Actor?.ActorManager is InterfaceManager manager)
@@ -312,10 +307,8 @@ public class InspectorWidget
 
         // Pass 1 – mark EVERY component reachable from the spatial tree,
         //          regardless of open/closed state (closed ≠ orphaned).
-        foreach (var component in actor.Components)
-        {
-            _reachable.Add(component.Id);
-        }
+        if (actor.RootComponent != null)
+            MarkReachable(actor.RootComponent, actor.Id);
 
         // Pass 2 – populate the visible flat list from the spatial tree.
         if (actor.RootComponent != null)
@@ -334,6 +327,21 @@ public class InspectorWidget
             component.NodeDepth = 0;
             component.NodeIndex = _flatNodes.Count;
             _flatNodes.Add(new FlatEntry(component, component is SpatialComponent));
+        }
+    }
+
+    /// <summary>
+    /// Walks the whole spatial tree ignoring open/closed state, so pass 3 can tell an orphan from a collapsed node.
+    /// The <see cref="HashSet{T}.Add"/> result doubles as a visited guard against a cycle in the relation graph.
+    /// </summary>
+    private void MarkReachable(SpatialComponent component, int actorId)
+    {
+        if (!_reachable.Add(component.Id)) return;
+
+        foreach (var child in component.Children)
+        {
+            if (child.Actor?.Id != actorId) continue;
+            MarkReachable(child, actorId);
         }
     }
 

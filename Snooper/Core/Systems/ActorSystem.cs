@@ -1,7 +1,6 @@
 ﻿using Serilog;
 using Serilog.Context;
 using Serilog.Core;
-using Snooper.Core.Containers.Buffers;
 using Snooper.Core.Managers;
 using Snooper.Rendering.Actors;
 using Snooper.Rendering.Components;
@@ -41,7 +40,7 @@ public abstract class ActorSystem : IGameSystem
         ComponentType = componentType;
     }
 
-    private IDisposable Scope() => LogContext.PushProperty(Constants.SourceContextPropertyName, DisplayName);
+    protected IDisposable Scope() => LogContext.PushProperty(Constants.SourceContextPropertyName, DisplayName);
 
     public void Load()
     {

@@ -87,7 +87,7 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     internal void RegisterActor(Actor actor)
     {
         ActorCount++;
-        Revision++;
+        IncrementRevision();
 
         Log.Verbose("{Actor} entered the scene", actor.Name);
     }
@@ -95,10 +95,12 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     internal void UnregisterActor(Actor actor)
     {
         ActorCount--;
-        Revision++;
+        IncrementRevision();
 
         Log.Verbose("{Actor} left the scene", actor.Name);
     }
+
+    internal void IncrementRevision() => Revision++;
 
     internal void RegisterComponent(ActorComponent component)
     {
@@ -186,9 +188,9 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
                 system.Dispose();
                 continue;
             }
-            system.Load();
 
             Systems.Add(system.Order, system);
+            system.Load();
             count++;
         }
     }
@@ -294,8 +296,7 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     {
         while (_systemsToLoad.Count > 0)
         {
-            var pending = _systemsToLoad.Dequeue();
-            pending.Dispose();
+            _systemsToLoad.Dequeue().Dispose();
         }
 
         foreach (var system in Systems.Values.ToArray())

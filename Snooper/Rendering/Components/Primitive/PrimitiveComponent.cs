@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Assets.Exports.FastGeoStreaming;
 using CUE4Parse.UE4.Objects.Core.Math;
 using ImGuiNET;
 using Snooper.Core;
@@ -95,7 +96,7 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         {
             IsVisible = visible;
         }
-        else if (component.TryGetValue(out bool hidden, "bHiddenInGame"))
+        else if (component.TryGetValue(out bool hidden, "bHiddenInGame", "bIsHidden"))
         {
             IsVisible = !hidden;
         }
@@ -117,6 +118,15 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         {
             DrawDistance.Y = maxDrawDistance * Settings.GlobalScale;
         }
+    }
+
+    protected PrimitiveComponent(FFastGeoPrimitiveComponent component) : base(component)
+    {
+        var desc = component.SceneProxyDesc.PrimitiveSceneProxyDesc;
+        IsVisible = component.bVisible || !desc.bIsHidden;
+        CastShadow = desc.CastShadow || desc.bCastStaticShadow || desc.bCastDynamicShadow;
+        DrawDistance.X = desc.MinDrawDistance * Settings.GlobalScale;
+        DrawDistance.Y = desc.CachedMaxDrawDistance * Settings.GlobalScale;
     }
 
     protected PrimitiveComponent(USceneComponent component) : base(component)
@@ -242,6 +252,11 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             ImGui.Spacing();
             ImGui.EndGroup();
 
+            if (DrawDistance != Vector2.Zero)
+            {
+                EditorUI.Text("Draw Distances", $"Min: {DrawDistance.X} |  Max: {DrawDistance.Y}");
+            }
+
             EditorUI.Property($"Sections ({lod.Sections.Length})");
             ImGui.BeginGroup();
             if (lod.Sections.Length > 0)
@@ -269,15 +284,13 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
             }
             ImGui.EndGroup();
 
-            if (Descriptor.MorphTargets is { Count: > 0 })
+            if (Descriptor.Morphs is { Count: > 0 } morphs)
             {
-                EditorUI.Property($"Morph Targets ({Descriptor.MorphTargets.Count})");
-                ImGui.BeginGroup();
-                foreach (var morphTarget in Descriptor.MorphTargets)
+                EditorUI.Property($"Morph Targets ({morphs.Count})");
+                if (ImGui.Button($"{Settings.BarsProgressIcon}  Open Morph Targets", new Vector2(-1, 0)))
                 {
-                    ImGui.TextUnformatted(morphTarget.Name);
+                    WindowRequests.Request(Settings.MorphTargetsWindow);
                 }
-                ImGui.EndGroup();
             }
         });
     }

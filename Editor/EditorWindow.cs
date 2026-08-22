@@ -30,19 +30,20 @@ public partial class EditorWindow : GameWindow
             Flags = ContextFlags.ForwardCompatible,
 #endif
             Profile = ContextProfile.Core,
-            Vsync = VSyncMode.Adaptive,
+            Vsync = VSyncMode.Off,
             APIVersion = new Version(4, 6),
+            AutoIconify = false,
             StartVisible = startVisible,
             StartFocused = startVisible,
             Title = $"Snooper ({Settings.APP_SHORT_COMMIT_ID} - {Settings.APP_BUILD_DATE:MMM d, yyyy})"
         })
     {
         PropertyUtil.SearchPropertyInTemplate = true; // search template properties when looking for a prop via GetOrDefault and cie
-        if (Flags.HasFlag(ContextFlags.Debug))
-        {
-            // Profiler.Enabled = true;
-            RendererInfo.TrackMemory = true;
-        }
+        // if (Flags.HasFlag(ContextFlags.Debug))
+        // {
+        //     Profiler.Enabled = true;
+        //     RendererInfo.TrackMemory = true;
+        // }
 
         CloseHides = closeHides;
         Manager = new EditorManager(this, fileProvider);
@@ -61,7 +62,6 @@ public partial class EditorWindow : GameWindow
             Manager.UnloadScene();
             Hide();
         };
-        Unload += DoUnload; // right after the game loop ends
     }
 
     protected override void OnLoad()
@@ -154,18 +154,26 @@ public partial class EditorWindow : GameWindow
     private void DoTextInput(TextInputEventArgs e)
     {
         if (!IsFocused) return;
+
         Manager.TextInput((char) e.Unicode);
     }
 
     private void DoResize(FramebufferResizeEventArgs e)
     {
         if (!IsFocused) return;
+
+        Log.Information("Framebuffer resized to {Width}x{Height}", e.Width, e.Height);
         Manager.Resize(e.Width, e.Height);
     }
 
-    private void DoUnload()
+    protected override void Dispose(bool disposing)
     {
-        Manager.Dispose();
-        Log.CloseAndFlush();
+        if (disposing)
+        {
+            CursorState = CursorState.Normal;
+            Manager.Dispose();
+        }
+
+        base.Dispose(disposing);
     }
 }
