@@ -157,7 +157,7 @@ public class SpatialComponent : ActorComponent
         }
     }
 
-    protected Transform LocalTransform
+    public Transform LocalTransform
     {
         get;
         private set

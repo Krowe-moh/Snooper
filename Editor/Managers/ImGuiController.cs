@@ -91,15 +91,15 @@ public class ImGuiController : IResizable, IDisposable
             io.AddKeyEvent(TranslateKey(key), kState.IsKeyDown(key));
         }
 
+        io.AddKeyEvent(ImGuiKey.ModCtrl, kState.IsKeyDown(Keys.LeftControl) || kState.IsKeyDown(Keys.RightControl));
+        io.AddKeyEvent(ImGuiKey.ModShift, kState.IsKeyDown(Keys.LeftShift) || kState.IsKeyDown(Keys.RightShift));
+        io.AddKeyEvent(ImGuiKey.ModAlt, kState.IsKeyDown(Keys.LeftAlt) || kState.IsKeyDown(Keys.RightAlt));
+        io.AddKeyEvent(ImGuiKey.ModSuper, kState.IsKeyDown(Keys.LeftSuper) || kState.IsKeyDown(Keys.RightSuper));
+
         while (_pressedChars.TryDequeue(out char c))
         {
             io.AddInputCharacter(c);
         }
-
-        io.KeyShift = kState.IsKeyDown(Keys.LeftShift) || kState.IsKeyDown(Keys.RightShift);
-        io.KeyCtrl = kState.IsKeyDown(Keys.LeftControl) || kState.IsKeyDown(Keys.RightControl);
-        io.KeyAlt = kState.IsKeyDown(Keys.LeftAlt) || kState.IsKeyDown(Keys.RightAlt);
-        io.KeySuper = kState.IsKeyDown(Keys.LeftSuper) || kState.IsKeyDown(Keys.RightSuper);
 
         _frameBegun = true;
         ImGui.NewFrame();
@@ -308,7 +308,7 @@ public class ImGuiController : IResizable, IDisposable
             Keys.KeyPadAdd => ImGuiKey.KeypadAdd,
             Keys.KeyPadEnter => ImGuiKey.KeypadEnter,
             Keys.KeyPadEqual => ImGuiKey.KeypadEqual,
-            Keys.LeftShift => ImGuiKey.ModShift,
+            Keys.LeftShift => ImGuiKey.LeftShift,
             Keys.LeftControl => ImGuiKey.LeftCtrl,
             Keys.LeftAlt => ImGuiKey.LeftAlt,
             Keys.LeftSuper => ImGuiKey.LeftSuper,
