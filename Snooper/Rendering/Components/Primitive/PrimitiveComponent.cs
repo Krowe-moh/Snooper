@@ -6,7 +6,7 @@ using ImGuiNET;
 using Snooper.Core;
 using Snooper.Core.Managers;
 using Snooper.Core.Containers.Resources;
-using Snooper.Rendering.Actors;
+using Snooper.Rendering.Cache;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Components.Descriptors;
 using Snooper.Rendering.Components.Transforms;
@@ -22,6 +22,8 @@ public interface IPrimitiveComponent
     public MaterialSection[] Materials { get; }
     public bool IsOpaque { get; }
     public bool IsVisible { get; set; }
+
+    internal MaterialSection? SelectedMaterial { get; }
 }
 
 public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> : SpatialComponent, IPrimitiveComponent
@@ -165,17 +167,54 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
 
     }
 
-    protected override (Vector3, float) GetTeleportPosition(CameraComponent camera)
+    protected override (Vector3, float) GetTeleportPosition(CameraComponent camera, Quaternion rotation)
     {
-        var vHalfFov = camera.FieldOfViewRadians / 2f;
-        var hHalfFov = MathF.Atan(MathF.Tan(vHalfFov) * camera.AspectRatio);
-        var limitingHalfFov = MathF.Min(vHalfFov, hHalfFov);
+        var upLimit = MathF.Tan(camera.FieldOfViewRadians / 2f);
+        var sideLimit = upLimit * camera.AspectRatio;
 
-        var sphereRadius = Descriptor.Bounds.Extents.Length();
-        var distance = sphereRadius / MathF.Tan(limitingHalfFov) * 1.25f;
+        var forward = Vector3.Transform(Settings.ForwardVector, rotation);
+        var right = Vector3.Transform(Settings.RightVector, rotation);
+        var up = Vector3.Transform(Settings.UpVector, rotation);
+
         var center = Vector3.Transform(Descriptor.Bounds.Center, GizmoMatrix);
 
+        var distance = 0f;
+        for (var i = 0; i < 8; i++)
+        {
+            var offset = Vector3.Transform(GetBoundsCorner(i), GizmoMatrix) - center;
+            var depth = Vector3.Dot(offset, -forward);
+
+            distance = MathF.Max(distance, MathF.Abs(Vector3.Dot(offset, right)) / sideLimit - depth);
+            distance = MathF.Max(distance, MathF.Abs(Vector3.Dot(offset, up)) / upLimit - depth);
+        }
+
         return (center, MathF.Max(distance, 0.1f));
+    }
+
+    private Vector3 GetBoundsCorner(int index)
+    {
+        var extents = Descriptor.Bounds.Extents;
+
+        return Descriptor.Bounds.Center + new Vector3(
+            (index & 1) == 0 ? -extents.X : extents.X,
+            (index & 2) == 0 ? -extents.Y : extents.Y,
+            (index & 4) == 0 ? -extents.Z : extents.Z);
+    }
+
+    public void SnapToGround()
+    {
+        var lowest = float.MaxValue;
+        for (var i = 0; i < 8; i++)
+        {
+            lowest = MathF.Min(lowest, Vector3.Transform(GetBoundsCorner(i), WorldMatrix).Y);
+        }
+
+        if (lowest == 0f || !Matrix4x4.Invert(GetRelationMatrix(), out var invRelation))
+            return;
+
+        var transform = GetLocalTransform();
+        transform.Position -= Vector3.TransformNormal(new Vector3(0f, lowest, 0f), invRelation);
+        SetLocalTransform(transform);
     }
 
     protected override void BeginPlay(ActorManager scene)
@@ -195,8 +234,40 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
         .Add("\uf0c5", "Copy Path", () => ImGui.SetClipboardText(Descriptor.Path))
         .Add("\uf05a", "Primitive Info", () => ImGui.OpenPopup("##PrimitiveInfo"));
 
+    private PropertyToggleButton[] MaterialButtons => field ??=
+    [
+        new PropertyToggleButton(
+            () => Settings.AngleLeftIcon,
+            () => { _materialLayerIndex = _materialLayerIndex <= 0 ? MaterialLayerCount - 1 : _materialLayerIndex - 1; },
+            () => "Previous Layer",
+            visible: () => MaterialLayerCount > 1),
+        new PropertyToggleButton(
+            () => Settings.AngleRightIcon,
+            () => { _materialLayerIndex = _materialLayerIndex >= MaterialLayerCount - 1 ? 0 : _materialLayerIndex + 1; },
+            () => "Next Layer",
+            visible: () => MaterialLayerCount > 1),
+        new PropertyToggleButton(
+            () => Settings.PaletteIcon,
+            () => WindowRequests.Request(Settings.MaterialEditorWindow),
+            () => "Material Editor",
+            () => SelectedMaterial?.MaterialDataContainer != null)
+    ];
+
+    private PropertyToggleButton[] MorphButtons => field ??=
+    [
+        new PropertyToggleButton(
+            () => Settings.BarsProgressIcon,
+            () => WindowRequests.Request(Settings.MorphEditorWindow),
+            () => "Morph Editor",
+            () => Descriptor.Morphs is { Count: > 0 })
+    ];
+
     private int _sectionIndex;
     private int _materialIndex;
+    private int _materialLayerIndex;
+    private int MaterialLayerCount => SelectedMaterial?.MaterialDataContainer is MaterialDataContainer material ? material.LayerCount : 0;
+    public MaterialSection? SelectedMaterial => _materialIndex >= 0 && _materialIndex < Materials.Length ? Materials[_materialIndex] : null;
+
     public override void DrawControls()
     {
         base.DrawControls();
@@ -233,64 +304,70 @@ public abstract class PrimitiveComponent<TVertex, TInstanceData, TPerMaterialDat
                 }
             }
 
-            ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
-            ImGui.SetWindowFontScale(0.85f);
-
             var lod = Descriptor.Lods[Math.Max(0, value)];
             switch (value)
             {
                 case -1:
-                    ImGui.TextUnformatted("Auto (Screen Size Based)");
+                    EditorUI.Caption("Auto (Screen Size Based)");
                     break;
                 case >= 0 when value < Descriptor.Lods.Length:
-                    ImGui.TextUnformatted($"{lod.VertexCount} Vertices, {lod.IndexCount} Indices");
+                    EditorUI.Caption($"{lod.VertexCount} Vertices, {lod.IndexCount} Indices");
                     break;
             }
 
-            ImGui.SetWindowFontScale(1.0f);
-            ImGui.PopStyleVar();
             ImGui.Spacing();
             ImGui.EndGroup();
 
             if (DrawDistance != Vector2.Zero)
             {
-                EditorUI.Text("Draw Distances", $"Min: {DrawDistance.X} |  Max: {DrawDistance.Y}");
+                EditorUI.Text("Draw Distance", $"Min: {DrawDistance.X}, Max: {DrawDistance.Y}");
             }
 
             EditorUI.Property($"Sections ({lod.Sections.Length})");
+            var selected = lod.Sections[_sectionIndex];
+            _materialIndex = (int) selected.MaterialIndex;
+
             ImGui.BeginGroup();
-            if (lod.Sections.Length > 0)
+            ImGui.SetNextItemWidth(-1);
+            if (ImGui.BeginCombo("##SectionCombo", $"{_sectionIndex}: {selected.Name}"))
             {
-                var maxSection = lod.Sections.Length - 1;
+                for (var i = 0; i < lod.Sections.Length; i++)
+                {
+                    var isSelected = i == _sectionIndex;
 
-                ImGui.BeginDisabled(maxSection == 0);
-                var slided2 = ImGui.SliderInt("##SectionSlider", ref _sectionIndex, 0, maxSection);
-                ImGui.EndDisabled();
+                    if (ImGui.Selectable($"{i}: {lod.Sections[i].Name}##Section{i}", isSelected))
+                    {
+                        _sectionIndex = i;
+                        _materialLayerIndex = 0;
+                        _materialIndex = (int) lod.Sections[i].MaterialIndex;
+                    }
+                    if (isSelected) ImGui.SetItemDefaultFocus();
+                }
+                ImGui.EndCombo();
+            }
 
-                ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.6f);
-                ImGui.SetWindowFontScale(0.85f);
+            EditorUI.Caption($"Material {selected.MaterialIndex}, {(selected.CastShadow && CastShadow ? "casts shadow" : "no shadow")}");
+            ImGui.Spacing();
+            ImGui.EndGroup();
 
-                var section = lod.Sections[_sectionIndex];
-                if (slided1 || slided2) _materialIndex = (int)section.MaterialIndex;
-                ImGui.TextUnformatted($"{section.Name}: Material {section.MaterialIndex}, Shadows? {section.CastShadow && CastShadow}");
-
-                ImGui.SetWindowFontScale(1.0f);
-                ImGui.PopStyleVar();
-                ImGui.Spacing();
+            EditorUI.PropertyWithToggle("Material", MaterialButtons);
+            if (SelectedMaterial is not { } section)
+            {
+                ImGui.TextDisabled("Loading...");
+            }
+            else if (section.MaterialDataContainer is not MaterialDataContainer container)
+            {
+                ImGui.TextColored(Settings.OrangeColor, "No material data container available.");
             }
             else
             {
-                ImGui.TextDisabled("No Sections?");
+                container.DrawSummary(_materialLayerIndex);
             }
-            ImGui.EndGroup();
 
             if (Descriptor.Morphs is { Count: > 0 } morphs)
             {
-                EditorUI.Property($"Morph Targets ({morphs.Count})");
-                if (ImGui.Button($"{Settings.BarsProgressIcon}  Open Morph Targets", new Vector2(-1, 0)))
-                {
-                    WindowRequests.Request(Settings.MorphTargetsWindow);
-                }
+                EditorUI.PropertyWithToggle($"Morph Targets ({morphs.Count})", MorphButtons);
+                ImGui.Text(string.Empty);
             }
         });
     }

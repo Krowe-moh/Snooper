@@ -10,6 +10,7 @@ using Snooper.Rendering.Components;
 using Snooper.Rendering.Components.Camera;
 using Snooper.Rendering.Managers;
 using Snooper.Rendering.Systems;
+using Snooper.UI;
 
 namespace Snooper.Core.Managers;
 
@@ -81,7 +82,7 @@ public class SceneManager : ActorManager
 
         if (RootActor != null && MainViewport?.Camera is { } camera && camera.IsDirty(DirtyFlags.Transform))
         {
-            UpdatePartitionActorsRecursive(RootActor, camera.LocalTransform.Position);
+            UpdatePartitionActorsRecursive(RootActor, camera.GetLocalTransform().Position);
         }
 
         base.Update(delta);
@@ -254,6 +255,7 @@ public class SceneManager : ActorManager
     {
         base.Dispose();
 
+        WindowRequests.ClearPayloads();
         MeshCache.ClearAndDispose();
         MaterialCache.ClearAndDispose();
         TextureCache.ClearAndDispose();

@@ -157,7 +157,7 @@ public class SpatialComponent : ActorComponent
         }
     }
 
-    public Transform LocalTransform
+    protected Transform LocalTransform
     {
         get;
         private set
@@ -229,7 +229,7 @@ public class SpatialComponent : ActorComponent
         return relationMatrix;
     }
 
-    public bool AttachTo(SpatialComponent? newRelation, string? socket = null, bool keepWorldTransform = true)
+    public bool AttachTo(SpatialComponent? newRelation, string? socket = null)
     {
         if (newRelation == Relation && socket == AttachSocketName) return true;
 
@@ -239,7 +239,8 @@ public class SpatialComponent : ActorComponent
         if (Relation != newRelation) return false;
 
         AttachSocketName = socket;
-        if (keepWorldTransform) KeepWorldTransform(worldBefore);
+        if (socket == null) KeepWorldTransform(worldBefore);
+        else SetLocalTransform(Transform.Identity);
 
         return true;
     }
@@ -338,14 +339,17 @@ public class SpatialComponent : ActorComponent
 
     public virtual Matrix4x4[] GetWorldMatrices(int index = -1) => [WorldMatrix];
 
-    protected virtual (Vector3, float) GetTeleportPosition(CameraComponent camera) => (GizmoMatrix.Translation, 2.50f);
+    protected virtual (Vector3, float) GetTeleportPosition(CameraComponent camera, Quaternion rotation) => (GizmoMatrix.Translation, 2.50f);
 
     public void TeleportTo()
     {
-        if (Actor?.ActorManager is not SceneManager { MainViewport.Camera: { } camera })
+        if (Actor?.ActorManager is not SceneManager manager)
             return;
 
-        var (center, distance) = GetTeleportPosition(camera);
+        var camera = manager.MainViewport?.Camera ?? manager.RootActor?.Children.OfType<CameraActor>().FirstOrDefault()?.CameraComponent;
+        if (camera is null) return;
+
+        var (center, distance) = GetTeleportPosition(camera, camera.LocalTransform.Rotation);
         camera.TeleportTo(center, distance);
     }
 
@@ -405,7 +409,7 @@ public class SpatialComponent : ActorComponent
     private const string HeaderLabel = "Transform";
     private HeaderButtons HeaderButtons => field ??= new HeaderButtons(HeaderLabel)
         .Add(
-            () => "\uf0e2",
+            () => Settings.ArrowRotateLeftIcon,
             () => IsLocalTransformDirty(_instanceIndex) ? "Reset to original transform" : "No changes to reset",
             () => ResetLocalTransform(_instanceIndex),
             () => IsLocalTransformDirty(_instanceIndex),
@@ -414,12 +418,12 @@ public class SpatialComponent : ActorComponent
 
     private PropertyToggleButton[] InstanceNavButtons => field ??= [
         new PropertyToggleButton(
-            () => "\uf104",
+            () => Settings.AngleLeftIcon,
             () => { _instanceIndex = _instanceIndex < 0 ? InstanceCount - 1 : _instanceIndex - 1; TeleportTo(); },
             () => "Previous"
         ),
         new PropertyToggleButton(
-            () => "\uf105",
+            () => Settings.AngleRightIcon,
             () => { _instanceIndex = _instanceIndex >= InstanceCount - 1 ? -1 : _instanceIndex + 1; TeleportTo(); },
             () => "Next"
         )
@@ -480,10 +484,8 @@ public class SpatialComponent : ActorComponent
                 {
                     ImGui.BeginTooltip();
                     ImGui.TextUnformatted($"0 = Pivot\n1..{InstanceCount} = Instance Index");
-                    ImGui.SetWindowFontScale(0.85f);
                     ImGui.Spacing();
-                    ImGui.TextDisabled("Changes to pivot transform will affect all instances");
-                    ImGui.SetWindowFontScale(1.0f);
+                    EditorUI.Caption("Changes to pivot transform will affect all instances");
                     ImGui.EndTooltip();
                 }
             }
@@ -654,8 +656,7 @@ public class SpatialComponent : ActorComponent
         var selected = entry.Value == AttachSocketName;
         if (ImGui.Selectable(entry.Label, selected))
         {
-            // keep the local transform: picking a socket means "put it there", not "hold it where it is"
-            AttachTo(Relation, entry.Value, keepWorldTransform: false);
+            AttachTo(Relation, entry.Value);
         }
         if (selected) ImGui.SetItemDefaultFocus();
     }
