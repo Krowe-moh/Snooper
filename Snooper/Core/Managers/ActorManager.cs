@@ -24,7 +24,7 @@ public abstract class ActorManager(IFileProvider fileProvider) : IGameSystem, IM
     public uint Revision { get; private set; }
     public float Time { get; private set; }
     public RendererInfo Renderer { get; } = new();
-    public ThreadManager ThreadManager { get; } = new(Environment.ProcessorCount - 2);
+    public ThreadManager ThreadManager { get; } = new(Math.Max(1, Environment.ProcessorCount - 2));
     public IFileProvider FileProvider { get; } = fileProvider;
     protected SortedList<uint, ActorSystem> Systems { get; } = [];
 

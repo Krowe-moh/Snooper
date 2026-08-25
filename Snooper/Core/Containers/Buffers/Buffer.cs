@@ -54,7 +54,6 @@ public abstract class Buffer<T>(BufferTarget target, BufferUsageHint usageHint) 
 
         GL.CreateBuffers(1, out uint handle);
         Handle = handle;
-        _bInitialized = false;
     }
 
     public void Bind()

@@ -135,6 +135,7 @@ public class MorphTargetWidget : PanelWidget
                     }
                 }
                 clipper.End();
+                clipper.Destroy(); // the native clipper leaks every frame otherwise
             }
         }
         ImGui.EndChild();
