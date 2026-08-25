@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using CUE4Parse.UE4.Assets.Exports;
 using CUE4Parse.UE4.Assets.Exports.Component;
+using CUE4Parse.UE4.Assets.Exports.Component.Landscape;
 using CUE4Parse.UE4.Objects.Core.Math;
 using CUE4Parse.UE4.Assets.Exports.FastGeoStreaming;
 using CUE4Parse.UE4.Objects.UObject;
@@ -80,6 +81,32 @@ public class SpatialComponent : ActorComponent
                 rotation,
                 translation,
                 scale);
+
+            if (component is ULandscapeComponent landscape)
+            {
+                var boundsOrigin = landscape.CachedBoxSphereBounds.Origin;
+
+                var sizeQuads = (float)landscape.ComponentSizeQuads;
+                var localCenter = new FVector(
+                    sizeQuads * 0.5f,
+                    0.0f,
+                    sizeQuads * 0.5f);
+
+                var scaledLocalCenter = actorTransform.Scale3D * localCenter;
+                var rotatedScaledLocalCenter = actorTransform.Rotation.RotateVector(scaledLocalCenter);
+
+                var worldGridOrigin = new FVector(
+                    boundsOrigin.X - rotatedScaledLocalCenter.X,
+                    boundsOrigin.Y - rotatedScaledLocalCenter.Y,
+                    translation.Z);
+
+                actorTransform = new FTransform(
+                    actorTransform.Rotation,
+                    worldGridOrigin,
+                    actorTransform.Scale3D);
+
+                transform = FTransform.Identity;
+            }
 
             transform = actorTransform * transform;
         }

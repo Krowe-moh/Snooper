@@ -144,6 +144,12 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             var section = new MaterialSection(index);
             Materials[index] = section;
 
+            var material = _materials[index];
+            if (material == null || material.IsNull)
+            {
+                continue;
+            }
+
             scene.ThreadManager.Enqueue(() =>
             {
                 section.CacheKey = index == 0 && textureData.Length > 0

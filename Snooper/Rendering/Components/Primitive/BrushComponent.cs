@@ -2,6 +2,7 @@
 using CUE4Parse.UE4.Assets.Exports.Component;
 using CUE4Parse.UE4.Objects.Engine;
 using Snooper.Rendering.Components.Descriptors;
+using Snooper.Rendering.Components.Transforms;
 using Snooper.Rendering.Components.Visualization;
 
 namespace Snooper.Rendering.Components.Primitive;
@@ -13,6 +14,12 @@ public class BrushComponent : DebugComponent
         Descriptor = new PrimitiveDescriptor<Vector3>(brush.Bounds.GetBox(), () => new Geometry(brush));
 
         Materials[0].InlineContainer = new MaterialDataContainer(new Vector3(0.75f, 0, 0));
+    }
+
+    public BrushComponent(UModel brush, Transform? transform = null, string? name = null)
+        : base(new Vector3(0.75f, 0, 0), 1.0f, transform, name ?? brush.Name)
+    {
+        Descriptor = new PrimitiveDescriptor<Vector3>(brush.Bounds.GetBox(), () => new Geometry(brush));
     }
 
     private class Geometry : DebugGeometry

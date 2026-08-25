@@ -1,9 +1,7 @@
 ﻿using System.Numerics;
 using CUE4Parse.Compression;
-using CUE4Parse.Encryption.Aes;
 using CUE4Parse.FileProvider;
 using CUE4Parse.MappingsProvider.Usmap;
-using CUE4Parse.UE4.Objects.Core.Misc;
 using CUE4Parse.UE4.Objects.Engine;
 using CUE4Parse.UE4.Versions;
 using Editor;
@@ -25,7 +23,7 @@ Compression.UseLZO(static (source, destination, out written) =>
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Verbose()
-    .MinimumLevel.Information()
+    .MinimumLevel.Debug()
     .WriteTo.Console(
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}]: {Message:lj}{NewLine}{Exception}",
         theme: AnsiConsoleTheme.Literate)
@@ -35,7 +33,7 @@ Log.Logger = new LoggerConfiguration()
 OodleHelper.Initialize();
 ZlibHelper.Initialize(ZlibHelper.DLL_NAME);
 
-const string dir = @"C:\Program Files (x86)\Steam\steamapps\common\Moon Base Alpha";
+const string dir = @"C:\UDK\UDK-2015-01";
 const string mapping = @"C:\Users\krowe\Downloads\RocketLeague.usmap";
 var version = new VersionContainer(EGame.GAME_UE3_0);
 
@@ -48,7 +46,7 @@ provider.LoadVirtualPaths();
 
 using var snooper = new EditorWindow(60, 1500, 900, provider, false);
 var scene = new Actor("Example Scene");
-scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("Moon Base Alpha/MoonBaseAlphaGame/CookedPC/Maps/MBA_Sandbox.TheWorld")));
+scene.Children.Add(new WorldActor(provider.LoadPackageObject<UWorld>("UDK-2015-01/UDKGame/Content/Maps/Mobile/help.TheWorld")));
 scene.Components.Add(new BoxComponent(Vector3.Zero, Vector3.One));
 
 var camera = new CameraActor("Camera");

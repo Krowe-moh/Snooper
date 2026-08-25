@@ -37,7 +37,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Bounds = (CullingBounds) other.Bounds.Clone();
         Lods = [];
         Skeleton = null;
-        Sockets = [];
+        Sockets = Array.Empty<ISocketDescriptor>();
         Morphs = other.Morphs;
     }
 
@@ -46,7 +46,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Guid = FGuid.Random();
         Bounds = bounds;
         Lods = [new LodDescriptor<TVertex>(factory())];
-        Sockets = [];
+        Sockets = Array.Empty<ISocketDescriptor>();
     }
 
     private PrimitiveDescriptor(uint id, CullingBounds bounds, Func<uint, TPrimitiveData<TVertex>> factory)
@@ -54,7 +54,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Guid = new FGuid(id);
         Bounds = bounds;
         Lods = [new LodDescriptor<TVertex>(factory(id))];
-        Sockets = [];
+        Sockets = Array.Empty<ISocketDescriptor>();
     }
 
     private PrimitiveDescriptor(UStaticMesh owner, Func<MeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
@@ -212,7 +212,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         => MeshCache.GetOrCreate(new FGuid((uint)owner.Name.GetHashCode()), () => new PrimitiveDescriptor<TVertex>(owner, factory));
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeletalMesh owner, Func<SkinnedMeshVertex[], uint[], FColor[]?, FMeshUVFloat[]?, TPrimitiveData<TVertex>> factory)
-        => MeshCache.GetOrCreate(FGuid.Random(), () => new PrimitiveDescriptor<TVertex>(owner, factory));
+        => MeshCache.GetOrCreate(new FGuid((uint)owner.Name.GetHashCode()), () => new PrimitiveDescriptor<TVertex>(owner, factory));
 
     public static PrimitiveDescriptor<TVertex> GetOrCreate(USkeleton owner, Func<SkeletonDescriptor, TPrimitiveData<TVertex>> factory)
         => MeshCache.GetOrCreate(owner.Guid, () => new PrimitiveDescriptor<TVertex>(owner, factory));
