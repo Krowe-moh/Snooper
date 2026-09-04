@@ -49,6 +49,16 @@ public class LevelActor : UnrealActor
                 }
             }
         }
+        if (actor is ALevelStreamingVolume volume)
+        {
+            if (volume?.StreamingLevels?.Length > 0)
+            {
+                for (var i = 0; i < volume.StreamingLevels.Length; i++)
+                {
+                    Process(volume.StreamingLevels[i]);
+                }
+            }
+        }
 
         if (actor is AInstancedFoliageActor { FoliageInfos: { } foliages })
         {
@@ -95,7 +105,18 @@ public class LevelActor : UnrealActor
         {
             case ULevelStreaming loaded:
             {
-                Children.Add(new WorldActor(ptr.Owner.Provider.LoadPackageObject<UWorld>(loaded.PackageName + ".TheWorld")));
+                try
+                {
+                    Children.Add(new WorldActor(ptr.Owner.Provider.LoadPackageObject<UWorld>(loaded.PackageName + ".TheWorld")));
+                } catch {}
+                break;
+            }
+            case ALevelStreamingVolume loaded:
+            {
+                foreach (var level in loaded.StreamingLevels)
+                {
+                    Process(level);
+                }
                 break;
             }
         }
