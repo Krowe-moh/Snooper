@@ -74,13 +74,13 @@ public sealed class AnimationPlayback
     private readonly List<(SpatialComponent Component, string? Socket)> _notifies = [];
     private bool _spawned;
 
-    public static AnimationPlayback? Create(UAnimationAsset animation, float playPosition = 0f, float playRate = 1f)
+    public static AnimationPlayback? Create(UAnimationAsset animation, float playPosition = 0f, float playRate = 1f, FReferenceSkeleton? fallbackReference = null)
     {
         SequenceBaseDescriptor? descriptor = animation switch
         {
-            UAnimMontage montage => new MontageDescriptor(montage),
-            UAnimComposite composite => new CompositeDescriptor(composite),
-            UAnimSequence sequence => new SequenceDescriptor(sequence),
+            UAnimMontage montage => new MontageDescriptor(montage, fallbackReference: fallbackReference),
+            UAnimComposite composite => new CompositeDescriptor(composite, fallbackReference: fallbackReference),
+            UAnimSequence sequence => new SequenceDescriptor(sequence, fallbackReference: fallbackReference),
             _ => null
         };
 

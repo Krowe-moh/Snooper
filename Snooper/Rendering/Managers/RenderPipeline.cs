@@ -17,7 +17,7 @@ public class RenderPipeline : IResizable, IMemoryDetailsProvider, IControllable,
     private readonly PostProcessor _postProcess = new(Settings.DefaultWidthHeight, Settings.DefaultWidthHeight);
 
     private bool _antiAliasing = true;
-    private bool _shadows = true;
+    private bool _shadows = false;
 
     // ao
     private bool _ambientOcclusion = true;

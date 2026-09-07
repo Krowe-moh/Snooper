@@ -3,7 +3,7 @@ using Snooper.Extensions;
 
 namespace Snooper.Rendering.Components.Descriptors.Animations;
 
-public abstract class CompositeBaseDescriptor(UAnimCompositeBase owner) : SequenceBaseDescriptor(owner)
+public abstract class CompositeBaseDescriptor(UAnimCompositeBase owner, FReferenceSkeleton? fallbackReference = null) : SequenceBaseDescriptor(owner, fallbackReference: fallbackReference)
 {
     private readonly List<SegmentDescriptor> _segments = [];
     public override IReadOnlyList<SegmentDescriptor> Segments => _segments;
@@ -21,7 +21,7 @@ public abstract class CompositeBaseDescriptor(UAnimCompositeBase owner) : Sequen
 
     private void AddSegment(UAnimSequence sequence, FAnimSegment segment, string? slotName)
     {
-        var descriptor = new SegmentDescriptor(Find(sequence) ?? new SequenceDescriptor(sequence, this), segment, slotName);
+        var descriptor = new SegmentDescriptor(Find(sequence) ?? new SequenceDescriptor(sequence, this, fallbackReference), segment, slotName);
 
         Duration = MathF.Max(Duration, descriptor.EndPos);
         _segments.Add(descriptor);

@@ -37,6 +37,7 @@ public class SkeletonDescriptor : IControllable
     public string? Name { get; private set; }
     public string? Path { get; private set; }
     public FGuid Guid { get; private set; }
+    public FReferenceSkeleton? ReferenceSkeleton { get; internal set; }
 
     internal BufferAllocation? _poseAllocation;
 
@@ -63,6 +64,7 @@ public class SkeletonDescriptor : IControllable
 
     public SkeletonDescriptor(FReferenceSkeleton reference)
     {
+        ReferenceSkeleton = reference;
         BoneLocalMatrices = new Matrix4x4[reference.FinalRefBonePose.Length];
         BoneDescriptors = new BoneDescriptor[BoneCount];
         BoneMatrices = new Matrix4x4[BoneCount];

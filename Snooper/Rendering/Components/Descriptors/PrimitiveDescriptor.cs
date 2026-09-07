@@ -49,6 +49,14 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
         Sockets = Array.Empty<ISocketDescriptor>();
     }
 
+    public PrimitiveDescriptor(CullingBounds bounds, LodDescriptor<TVertex> lod)
+    {
+        Guid = FGuid.Random();
+        Bounds = bounds;
+        Lods = [lod];
+        Sockets = Array.Empty<ISocketDescriptor>();
+    }
+
     private PrimitiveDescriptor(uint id, CullingBounds bounds, Func<uint, TPrimitiveData<TVertex>> factory)
     {
         Guid = new FGuid(id);
@@ -120,7 +128,7 @@ public class PrimitiveDescriptor<TVertex> : IControllable, ICloneable where TVer
             Lods[i] = LodDescriptor<TVertex>.FromLod(dto.LODs[i], factory, colorRemap);
         }
 
-        Skeleton = new SkeletonDescriptor(dto.Bones);
+        Skeleton = new SkeletonDescriptor(dto.Bones) { ReferenceSkeleton = owner.ReferenceSkeleton };
         if (owner.Skeleton.TryLoad<USkeleton>(out var skeleton))
         {
             Skeleton.SetOwner(skeleton);

@@ -104,16 +104,6 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
             }
         }
 
-        var oldMaterials = component.Materials;
-        for (var i = 0; i < oldMaterials.Length; i++)
-        {
-            if (i >= _materials.Length) break;
-            if (oldMaterials[i] is { IsNull: false } oldMaterial)
-            {
-                _materials[i] = oldMaterial;
-            }
-        }
-
         if (_materials.Length == 0)
         {
             _materials = [new FPackageIndex()];

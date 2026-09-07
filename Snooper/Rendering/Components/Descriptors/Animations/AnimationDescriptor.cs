@@ -1,4 +1,5 @@
 using CUE4Parse.UE4.Assets.Exports.Animation;
+using CUE4Parse.UE4.Objects.UObject;
 using ImGuiNET;
 using Snooper.Extensions;
 using Snooper.UI;
@@ -12,7 +13,7 @@ public abstract class AnimationDescriptor : IControllable
 
     public readonly SkeletonDescriptor Skeleton;
 
-    protected AnimationDescriptor(UAnimationAsset owner, AnimationDescriptor? outer = null)
+    protected AnimationDescriptor(UAnimationAsset owner, AnimationDescriptor? outer = null, FReferenceSkeleton? fallbackReference = null)
     {
         Name = owner.Name;
         Path = owner.GetCleanPath() ?? "N/A";
@@ -20,12 +21,27 @@ public abstract class AnimationDescriptor : IControllable
 
         SkeletonDescriptor Create()
         {
-            var skeleton = owner.Skeleton?.Load<USkeleton>() ?? throw new InvalidOperationException($"Failed to load skeleton for animation asset {owner.Name}");
+            var skeleton = owner.Skeleton?.Load<USkeleton>();
+            if (skeleton is null && fallbackReference is { } reference)
+                skeleton = CreateTempSkeletonFromModel(reference);
+
+            if (skeleton is null)
+                throw new InvalidOperationException($"Failed to load skeleton for animation asset {owner.Name}");
 
             var descriptor = new SkeletonDescriptor(skeleton.ReferenceSkeleton);
             descriptor.SetOwner(skeleton);
             return descriptor;
         }
+    }
+
+    internal static USkeleton CreateTempSkeletonFromModel(FReferenceSkeleton reference)
+    {
+        return new USkeleton
+        {
+            ReferenceSkeleton = reference,
+            BoneTree = new EBoneTranslationRetargetingMode[reference.FinalRefBoneInfo.Length],
+            AnimRetargetSources = new Dictionary<FName, FReferencePose>()
+        };
     }
 
     protected virtual string Subtitle => string.Empty;

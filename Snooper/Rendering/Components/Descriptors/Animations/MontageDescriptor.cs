@@ -8,7 +8,7 @@ public sealed class MontageDescriptor : CompositeBaseDescriptor
 {
     public readonly SectionDescriptor[] Sections;
 
-    public MontageDescriptor(UAnimMontage owner) : base(owner)
+    public MontageDescriptor(UAnimMontage owner, FReferenceSkeleton? fallbackReference = null) : base(owner, fallbackReference)
     {
         foreach (var slot in owner.SlotAnimTracks)
         {

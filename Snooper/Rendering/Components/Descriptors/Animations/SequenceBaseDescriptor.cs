@@ -12,7 +12,7 @@ public abstract class SequenceBaseDescriptor : AnimationDescriptor
 
     public abstract IReadOnlyList<SegmentDescriptor> Segments { get; }
 
-    protected SequenceBaseDescriptor(UAnimSequenceBase owner, AnimationDescriptor? outer = null) : base(owner, outer)
+    protected SequenceBaseDescriptor(UAnimSequenceBase owner, AnimationDescriptor? outer = null, FReferenceSkeleton? fallbackReference = null) : base(owner, outer, fallbackReference)
     {
         if (owner.Notifies is not { Length: > 0 } notifies)
         {

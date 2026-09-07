@@ -56,7 +56,7 @@ public class SkeletalMeshComponent : SkinnedMeshComponent
     public void SetAnimation(UAnimationAsset? animToPlay, float playPosition = 0f, float playRate = 1f)
     {
         Playback?.Despawn();
-        Bind(animToPlay != null ? AnimationPlayback.Create(animToPlay, playPosition, playRate) : null);
+        Bind(animToPlay != null ? AnimationPlayback.Create(animToPlay, playPosition, playRate, Descriptor.Skeleton?.ReferenceSkeleton) : null);
     }
 
     public void Bind(AnimationPlayback? playback)

@@ -37,6 +37,21 @@ public class LodDescriptor<TVertex> : IControllable where TVertex : unmanaged
         Sections = [new SectionDescriptor(0, IndexCount, 0, castShadow)];
     }
 
+    public LodDescriptor(uint indexCount, uint vertexCount, SectionDescriptor[] sections, Func<TPrimitiveData<TVertex>> factory, bool castShadow = false)
+    {
+        _primitive = null;
+        _factory = factory;
+
+        SourceLodIndex = 0;
+        IndexCount = indexCount;
+        VertexCount = vertexCount;
+        ScreenSize = 0.0f;
+        LayerCount = 1;
+        HasColoredVertices = false;
+        HasSkinnedVertices = false;
+        Sections = sections;
+    }
+
     private LodDescriptor(uint sourceLodIndex, uint indexCount, uint vertexCount, float screenSize, uint layerCount, bool hasColoredVertices, bool hasSkinnedVertices, SectionDescriptor[] sections, Func<TPrimitiveData<TVertex>>? factory)
     {
         SourceLodIndex = sourceLodIndex;
