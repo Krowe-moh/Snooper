@@ -1,15 +1,15 @@
-using System.Diagnostics;
 using System.Numerics;
+using System.Reflection;
 using CUE4Parse.Utils;
 
 namespace Snooper;
 
 public static class Settings
 {
-    public static readonly string APP_PATH = Path.GetFullPath(Environment.GetCommandLineArgs()[0]);
-    public static readonly string APP_VERSION = FileVersionInfo.GetVersionInfo(APP_PATH).FileVersion;
-    public static readonly string APP_COMMIT_ID = FileVersionInfo.GetVersionInfo(APP_PATH).ProductVersion?.SubstringAfter('+');
-    public static readonly string APP_SHORT_COMMIT_ID = APP_COMMIT_ID[..7];
+    private static readonly Assembly _assembly = typeof(Settings).Assembly;
+    public static readonly string APP_PATH = string.IsNullOrEmpty(_assembly.Location) ? Environment.ProcessPath ?? string.Empty : _assembly.Location;
+    public static readonly string APP_COMMIT_ID = _assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.SubstringAfter('+') ?? string.Empty;
+    public static readonly string APP_SHORT_COMMIT_ID = APP_COMMIT_ID.Length >= 7 ? APP_COMMIT_ID[..7] : APP_COMMIT_ID;
     public static readonly DateTime APP_BUILD_DATE = File.GetLastWriteTime(APP_PATH);
 
     // OpenGL is a right-handed coordinate system
@@ -58,11 +58,14 @@ public static class Settings
     public const string ChartPieIcon = "\uf200";
     public const string MagnifyingGlassIcon = "\uf002";
     public const string FolderOpenIcon = "\uf07c";
+    public const string BanIcon = "\uf05e";
+    public const string PlayIcon = "\uf04b";
     public const string FileImportIcon = "\uf56f";
     public const string FileExportIcon = "\uf56e";
     public const string PowerOffIcon = "\uf011";
     public const string PaletteIcon = "\uf53f";
     public const string EyeIcon = "\uf06e";
+    public const string EyeLowVisionIcon = "\uf2a8";
     public const string CameraIcon = "\uf030";
     public const string BookIcon = "\uf02d";
     public const string KeyboardIcon = "\uf11c";
@@ -87,13 +90,17 @@ public static class Settings
 
     public const int DefaultWidthHeight = 1;
     public const string NoName = "Unnamed";
-    public const int MaxTextureMipSize = 1024;
     public const int MaxNumberOfLods = 8;
     public const int NumberOfSamples = 4;
     public const float GlobalScale = 0.01f;
 
+    public const int MaxShadowCascades = 4;
+    public const int MaxLocalShadowCasters = 4;
+    public const int ShadowResolution = 2048;
+    public const int MaxShadowViews = MaxShadowCascades + MaxLocalShadowCasters;
+    public const int MaxCullingViews = 1 + MaxShadowViews;
+
     public const int TessellationQuadCount = 4; // change this to increase the resolution of the base landscape mesh (power of 2)
-    public static float TessellationScaleFactor => 1.0f / TessellationQuadCount;
-    public static int TessellationQuadCountTotal => TessellationQuadCount * TessellationQuadCount;
-    public static int TessellationIndicesPerQuad => TessellationQuadCountTotal * 4;
+    public const int TessellationQuadCountTotal = TessellationQuadCount * TessellationQuadCount;
+    public const int TessellationIndicesPerQuad = TessellationQuadCountTotal * 4;
 }

@@ -9,6 +9,7 @@ using Snooper.Extensions;
 using System.Collections.Concurrent;
 using System.Numerics;
 using CUE4Parse.UE4.Objects.UObject;
+using Snooper.Hosting;
 
 namespace Snooper.Rendering.Cache;
 

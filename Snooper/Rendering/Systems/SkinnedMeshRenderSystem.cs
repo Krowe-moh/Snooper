@@ -37,7 +37,7 @@ public struct PerInstanceSkinningData
     public uint BaseMorphWeight;
 }
 
-public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(["SKINNED_MESH_VERTEX", ..SkinnedBindings.OwnDefines])
+public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(["SKINNED_MESH_VERTEX", $"MAX_NUMBER_OF_LODS {Settings.MaxNumberOfLods}", ..SkinnedBindings.OwnDefines])
 {
     private abstract class SkinnedBindings : Bindings
     {
@@ -284,8 +284,7 @@ public class SkinnedMeshRenderSystem() : MeshRenderSystem<SkinnedMeshComponent>(
                     !animation.TryGetSegment(skeletonIndex, time, out var segment))
                     continue;
 
-                var scale = !skeleton.BoneDescriptors[boneIndex].IsRoot;
-                skeleton.BoneLocalMatrices[boneIndex] = segment.GetBoneMatrix(skeletonIndex, time, scale);
+                skeleton.BoneLocalMatrices[boneIndex] = segment.GetBoneMatrix(skeletonIndex, time, skeleton.BoneDescriptors[boneIndex]._transform);
             }
         }
         else

@@ -21,13 +21,13 @@ public class AllocationCounts
     public uint ColoredVertices; // total number of vertices with color data across all LODs of all unique components
 }
 
-public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(PrimitiveType mode) : IMemoryDetailsProvider, IDisposable
+public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(PrimitiveType mode, int viewCount = 1) : IMemoryDetailsProvider, IDisposable
     where TVertex : unmanaged
     where TInstanceData : unmanaged, IPerInstanceData
     where TPerMaterialData : unmanaged, IPerMaterialData
 {
     private readonly GeometryPool<TVertex> _geometry = new();
-    private readonly CommandBufferSet _commands = new();
+    private readonly CommandBufferSet _commands = new(viewCount);
     private readonly ShaderStorageBuffer<TInstanceData> _instanceData = new();
     private readonly ShaderStorageBuffer<TPerMaterialData> _materialData = new();
 
@@ -66,7 +66,7 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
     public ResourcesMetadata Add(PrimitiveComponent<TVertex, TInstanceData, TPerMaterialData> component)
     {
         var descriptor = component.Descriptor;
-        var geometryHandle = _geometry.Add(descriptor, component.DrawDistance);
+        var geometryHandle = _geometry.Add(descriptor);
         var instanceAllocation = _instanceData.AddRange(component.GetPerInstanceData());
 
         BufferAllocation? materialAllocation = null;
@@ -79,23 +79,24 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         const uint currentLod = 0u;
         var drawAllocations = new DrawBufferAllocation[descriptor.Lods[currentLod].Sections.Length];
 
-        var instanceCount = component.IsVisible ? (uint)instanceAllocation.Length : 0;
         var bufferType = component.IsOpaque ? CommandBufferType.Opaque : CommandBufferType.Transparent;
         var buffer = _commands.GetBuffer(bufferType);
         for (var i = 0u; i < drawAllocations.Length; i++)
         {
             var section = descriptor.Lods[currentLod].Sections[i];
+            var instanceCount = component.IsMaterialVisible(section.MaterialIndex) ? (uint)instanceAllocation.Length : 0u;
             var command = new DrawElementsIndirectCommand(section, instanceCount, geometryHandle, (uint)instanceAllocation.StartIndex);
-            var draw = new PerDrawData(
+            var draw = new PerDrawStatic(
                 geometryHandle,
                 i,
                 (uint) (materialAllocation?.StartIndex ?? int.MaxValue),
                 section,
                 (uint) component.Id,
                 command,
-                component.CastShadow);
+                component.CastShadow,
+                component.DrawDistance);
 
-            drawAllocations[i] = new DrawBufferAllocation(buffer.Add(command, draw), bufferType, section.MaterialIndex);
+            drawAllocations[i] = new DrawBufferAllocation(buffer.Add(command, draw, new PerDrawCulled(geometryHandle, section)), bufferType, section.MaterialIndex);
         }
 
         component.MarkClean(DirtyFlags.All);
@@ -118,11 +119,29 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             component.MarkClean(DirtyFlags.Opacity);
         }
 
+        if (component.IsDirty(DirtyFlags.Visibility))
+        {
+            foreach (var draw in metadata.DrawAllocations)
+            {
+                var data = component.IsMaterialVisible(draw.MaterialIndex) ? (uint)metadata.InstanceAllocation.Length : 0u;
+                var buffer = _commands.GetBuffer(draw.BufferType);
+                buffer.Commands.UpdateCustom(draw.Allocation.Command, data, DrawElementsIndirectCommand.InstanceCountOffset);
+                buffer.StaticData.UpdateCustom(draw.Allocation.Static, data, PerDrawStatic.OriginalInstanceCountOffset);
+            }
+
+            component.MarkClean(DirtyFlags.Visibility);
+        }
+
         if (component.IsDirty(DirtyFlags.Outline))
         {
             if (component.IsOutlined)
+            {
                 foreach (var draw in metadata.DrawAllocations)
+                {
+                    if (!component.IsMaterialVisible(draw.MaterialIndex)) continue;
                     _commands.Transfer(draw.Allocation, draw.BufferType, CommandBufferType.Mask);
+                }
+            }
 
             component.MarkClean(DirtyFlags.Outline);
         }
@@ -137,19 +156,6 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
         {
             _instanceData.QueueUpdate(metadata.InstanceAllocation, component.GetPerInstanceData());
             component.MarkClean(DirtyFlags.InstanceData);
-        }
-
-        if (component.IsDirty(DirtyFlags.Visibility))
-        {
-            var originalInstanceCount = component.IsVisible ? (uint)metadata.InstanceAllocation.Length : 0u;
-            foreach (var draw in metadata.DrawAllocations)
-            {
-                var buffer = _commands.GetBuffer(draw.BufferType);
-                buffer.Commands.UpdateCustom(draw.Allocation.Command, originalInstanceCount, DrawElementsIndirectCommand.InstanceCountOffset);
-                buffer.DrawData.UpdateCustom(draw.Allocation.Data, originalInstanceCount, PerDrawData.OriginalInstanceCountOffset);
-            }
-
-            component.MarkClean(DirtyFlags.Visibility);
         }
     }
 
@@ -200,19 +206,22 @@ public class IndirectResources<TVertex, TInstanceData, TPerMaterialData>(Primiti
             _materialData.Remove(materialAllocation);
     }
 
-    public void Cull(IViewProjectionProvider camera, CommandBufferType type, bool shadowPass = false) => _geometry.Cull(camera, _instanceData, _commands.GetBuffer(type), shadowPass);
+    public void Cull(ReadOnlySpan<CullView> views, CommandBufferType type) => _geometry.Cull(views, _instanceData, _commands.GetBuffer(type));
 
-    public void Render(CommandBufferType type)
+    public uint GetViewBase(CommandBufferType type, int view) => (uint) _commands.GetBuffer(type).GetViewBase(view);
+
+    public void Render(CommandBufferType type, int view = 0)
     {
         var buffer = _commands.GetBuffer(type);
         if (buffer.Capacity == 0) return;
 
         buffer.Commands.Bind();
-        buffer.DrawData.Bind(Bindings.DrawData);
+        buffer.StaticData.Bind(Bindings.DrawStatic);
+        buffer.CulledData.Bind(Bindings.DrawCulled);
         _instanceData.Bind(Bindings.InstanceData);
         _materialData.Bind(Bindings.MaterialData);
 
-        _geometry.Render(() => GL.MultiDrawElementsIndirect(mode, DrawElementsType.UnsignedInt, 0, buffer.Capacity, buffer.Stride));
+        _geometry.Render(() => GL.MultiDrawElementsIndirect(mode, DrawElementsType.UnsignedInt, buffer.GetViewOffset(view), buffer.Capacity, buffer.Stride));
 
         buffer.Commands.Unbind();
     }

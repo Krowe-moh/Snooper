@@ -80,19 +80,19 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
 
     protected MeshComponent(MeshComponent other) : base(other)
     {
-        Materials = other.Materials;
+        Materials = [..other.Materials];
     }
 
     protected MeshComponent(FPackageIndex?[] materials, Transform? transform = null, string? name = null) : base(transform, name)
     {
-        _materials = materials;
+        _materials = [..materials];
 
         Materials = new MaterialSection[_materials.Length];
     }
 
     protected MeshComponent(FPackageIndex?[] materials, UMeshComponent component) : base(component)
     {
-        _materials = materials;
+        _materials = [..materials];
 
         var overrideMaterials = component.OverrideMaterials;
         for (var i = 0; i < overrideMaterials.Length; i++)
@@ -131,7 +131,7 @@ public abstract class MeshComponent : PrimitiveComponent<Vertex, PerInstanceData
         for (var i = 0u; i < _materials.Length; i++)
         {
             var index = i;
-            var section = new MaterialSection(index);
+            var section = new MaterialSection(index, IsVisible);
             Materials[index] = section;
 
             var material = _materials[index];

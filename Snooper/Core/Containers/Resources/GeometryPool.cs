@@ -64,14 +64,14 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
         _culling.Allocate(counts);
     }
 
-    public GeometryHandle Add(PrimitiveDescriptor<TVertex> descriptor, Vector2 drawDistances)
+    public GeometryHandle Add(PrimitiveDescriptor<TVertex> descriptor)
     {
         var lods = descriptor.Lods;
 
         if (!_cache.TryGetValue(descriptor.Guid, out var handle))
         {
             var (firstIndex, baseVertex, baseColor, maxLod, offsets) = CreateOffsets();
-            var mesh = new PerMeshData(descriptor.Bounds, maxLod, drawDistances, descriptor.ColorMode);
+            var mesh = new PerMeshData(descriptor.Bounds, maxLod, descriptor.ColorMode);
             handle = new GeometryHandle(firstIndex, baseVertex, _culling.Add(mesh, offsets), baseColor, lods.Length > 1 ? -1 : 0);
             _cache.Add(descriptor.Guid, handle);
         }
@@ -105,12 +105,13 @@ public class GeometryPool<TVertex> : IMemoryDetailsProvider, IDisposable where T
                 maxLod++;
             }
 
-            return (o.LOD_FirstIndex[0], o.LOD_BaseVertex[0], o.LOD_BaseColor[0], Math.Min(maxLod, Settings.MaxNumberOfLods) - 1, o);
+            var lodCount = Math.Min(maxLod, Settings.MaxNumberOfLods);
+            return (o.LOD_FirstIndex[0], o.LOD_BaseVertex[0], o.LOD_BaseColor[0], lodCount > 0 ? lodCount - 1 : 0, o);
         }
     }
 
-    public void Cull<TInstanceData>(IViewProjectionProvider camera, ShaderStorageBuffer<TInstanceData> instances, IndirectDrawBuffer commands, bool shadowPass = false)
-        where TInstanceData : unmanaged, IPerInstanceData => _culling.Cull(camera, instances, commands, shadowPass);
+    public void Cull<TInstanceData>(ReadOnlySpan<CullView> views, ShaderStorageBuffer<TInstanceData> instances, IndirectDrawBuffer commands)
+        where TInstanceData : unmanaged, IPerInstanceData => _culling.Cull(views, instances, commands);
 
     public void Render(Action mdi)
     {
