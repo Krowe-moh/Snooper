@@ -239,7 +239,8 @@ public class SpatialComponent : ActorComponent
         if (Relation != newRelation) return false;
 
         AttachSocketName = socket;
-        if (socket == null) KeepWorldTransform(worldBefore);
+        if (socket == null)
+            KeepWorldTransform(worldBefore);
         else SetLocalTransform(Transform.Identity);
 
         return true;
